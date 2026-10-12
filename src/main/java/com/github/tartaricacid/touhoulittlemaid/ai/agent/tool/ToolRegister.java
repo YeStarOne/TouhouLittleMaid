@@ -22,6 +22,9 @@ public class ToolRegister {
         register.register(new SwitchWorkTaskTool());
         register.register(new SwitchScheduleTool());
         register.register(new SwitchSitTool());
+        register.register(new EatFoodTool());
+        register.register(new StoreLootTool());
+        register.register(new ExecuteCommandTool());
 
         for (ILittleMaid littleMaid : TouhouLittleMaid.EXTENSIONS) {
             littleMaid.registerAITool(register);

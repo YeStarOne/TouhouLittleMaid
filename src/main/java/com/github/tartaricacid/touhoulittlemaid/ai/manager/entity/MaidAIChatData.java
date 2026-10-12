@@ -101,8 +101,15 @@ public abstract class MaidAIChatData extends MaidAIChatSerializable {
     }
 
     private LLMSite getDefaultLLMSite() {
-        LLMSite site = AvailableSites.getLLMSite(DefaultLLMSite.DEEPSEEK.id());
-        return site == null ? DefaultLLMSite.DEEPSEEK : site;
+        // 1.5.3.1-autopilot: 原版写死回退到 deepseek 站点，
+        // 若该站点被禁用会导致所有未选择站点的女仆无法使用 LLM。
+        // 改为回退到第一个启用的站点。
+        for (LLMSite site : AvailableSites.LLM_SITES.values()) {
+            if (site.enabled()) {
+                return site;
+            }
+        }
+        return DefaultLLMSite.DEEPSEEK;
     }
 
     @Nullable

@@ -1,5 +1,6 @@
 package com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.summary;
 
+import com.github.tartaricacid.touhoulittlemaid.TouhouLittleMaid;
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.MaidAIChatManager;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMMessage;
 import com.github.tartaricacid.touhoulittlemaid.ai.service.llm.LLMSite;
@@ -144,6 +145,8 @@ public class HistorySummaryManager {
         });
 
         // 进行通信压缩上下文
+        TouhouLittleMaid.LOGGER.info("[Autopilot] maid {}: compressing {} history messages",
+                maid.getUUID(), snapshot.size());
         HistorySummaryCallback callback = new HistorySummaryCallback(this.chatManager, messages, snapshot, afterSummary);
         site.client().chat(callback);
         return true;

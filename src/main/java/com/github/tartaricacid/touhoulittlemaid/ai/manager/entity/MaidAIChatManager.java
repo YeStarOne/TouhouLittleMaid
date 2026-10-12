@@ -1,5 +1,6 @@
 package com.github.tartaricacid.touhoulittlemaid.ai.manager.entity;
 
+import com.github.tartaricacid.touhoulittlemaid.ai.autopilot.AutopilotCallback;
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.entity.summary.HistorySummaryManager;
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.setting.papi.PapiReplacer;
 import com.github.tartaricacid.touhoulittlemaid.ai.manager.setting.papi.StringConstant;
@@ -44,6 +45,13 @@ import static com.github.tartaricacid.touhoulittlemaid.ai.manager.setting.papi.S
 
 public final class MaidAIChatManager extends MaidAIChatData {
     private static final String DEEPSEEK_PLATFORM_URL = "https://platform.deepseek.com/";
+    /**
+     * 自主模式下，女仆没有人设时的兜底系统提示词
+     */
+    private static final String AUTOPILOT_FALLBACK_SETTING = """
+            你是一只生活在 Minecraft 世界里的小女仆，性格开朗勤快，会自己安排工作和休息。
+            你靠自己的判断自主生活，说话简短自然，始终用中文回复。""";
+
     private final HistorySummaryManager historySummaryManager;
 
     public MaidAIChatManager(EntityMaid maid) {
@@ -80,6 +88,59 @@ public final class MaidAIChatManager extends MaidAIChatData {
             return;
         }
         this.tryToChat(message, clientInfo, site);
+    }
+
+    /**
+     * 自主模式（autopilot）：无玩家交互的服务端自主决策入口。
+     * <p>
+     * 与 {@link #chat} 走相同的站点检查与消息构建流程，但不依赖在线玩家：
+     * 不做玩家 token 计数、不向玩家发送系统消息，女仆的回答通过聊天气泡呈现。
+     * 由 {@code MaidAutopilotManager} 周期性调用。
+     */
+    public void autopilotChat(String message, ChatClientInfo clientInfo) {
+        this.autopilotChat(message, clientInfo, true);
+    }
+
+    /**
+     * @param allowCompress 是否允许本轮先触发历史压缩。
+     *                      压缩成功后回调会以 allowCompress=false 重入本方法，
+     *                      避免压缩失败时在同一决策窗口内反复发起摘要请求。
+     */
+    private void autopilotChat(String message, ChatClientInfo clientInfo, boolean allowCompress) {
+        if (!AIConfig.LLM_ENABLED.get() || !AIConfig.AUTOPILOT_ENABLED.get()) {
+            return;
+        }
+        LLMSite site = this.getLLMSite();
+        if (site == null || !site.enabled()) {
+            return;
+        }
+
+        // 自主模式同样走历史压缩：历史是 512 条的持久队列，
+        // 若只在玩家聊天时压缩，长跑自主模式会把早期记忆静默挤掉。
+        if (allowCompress && this.historySummaryManager.tryCompressBeforeChat(
+                () -> this.autopilotChat(message, clientInfo, false))) {
+            return;
+        }
+
+        this.chatLanguage = clientInfo.language();
+        LLMClient chatClient = site.client();
+        List<LLMMessage> messages = this.getMessages(this, clientInfo.language());
+        if (messages.isEmpty()) {
+            // 没有人设（无自定义设定且无默认设定文件）时使用内置兜底人设，
+            // 避免每次决策都走一次 LLM 自动生成人设
+            messages = Lists.newArrayList(LLMMessage.systemChat(maid, AUTOPILOT_FALLBACK_SETTING));
+        }
+        HistoryMessagesCheck.checkMessages(messages);
+
+        // 与 normalChat 相同的流程：上下文注入 + 记录历史 + 异步回调
+        String messageWithContext = UserPromptContexts.addContext(this.maid, message);
+        messages.add(LLMMessage.userChat(this.maid, messageWithContext));
+        // 历史里只落一条短标记：完整提示词每轮都随当前请求发送（模型照常看到），
+        // 但不进历史——否则 512 条记忆会被重复的长文本灌水稀释，
+        // 表现为"像每轮重置了一样"。她的决策与工具结果照常入史，构成真实记忆。
+        this.maid.getAiChatManager().addUserHistory("【自主时间】继续行动。");
+        AutopilotCallback callback = new AutopilotCallback(this, messages);
+        chatClient.chat(callback);
     }
 
     private void sendDeepSeekTip(Player player) {

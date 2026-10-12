@@ -31,6 +31,7 @@ public final class GameContextRegister {
         EffectsMaidContexts.registerAll(register);
         PositionMaidContexts.registerAll(register);
         NearbyEntityMaidContexts.registerAll(register);
+        SurroundingsMaidContexts.registerAll(register);
 
         for (ILittleMaid littleMaid : TouhouLittleMaid.EXTENSIONS) {
             littleMaid.registerAIMaidContext(register);

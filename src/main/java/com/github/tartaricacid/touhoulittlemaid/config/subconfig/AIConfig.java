@@ -25,6 +25,9 @@ public class AIConfig {
     public static ModConfigSpec.IntValue MAID_CAN_CHAT_DISTANCE;
     public static ModConfigSpec.ConfigValue<String> STT_PROXY_ADDRESS;
 
+    public static ModConfigSpec.BooleanValue AUTOPILOT_ENABLED;
+    public static ModConfigSpec.IntValue AUTOPILOT_INTERVAL_SECONDS;
+
     public static void init(ModConfigSpec.Builder builder) {
         builder.push("ai");
 
@@ -66,6 +69,12 @@ public class AIConfig {
 
         builder.comment("STT Proxy Address, such as 127.0.0.1:1080, empty is no proxy, SOCKS proxies are not supported").translation(translateKey("stt_proxy_address"));
         STT_PROXY_ADDRESS = builder.define("STTProxyAddress", "");
+
+        builder.comment("Whether to enable maid autopilot: the maid makes her own decisions periodically, without any player interaction").translation(translateKey("autopilot_enabled"));
+        AUTOPILOT_ENABLED = builder.define("AutopilotEnabled", true);
+
+        builder.comment("Seconds between two autopilot decisions for each maid (chained mode)").translation(translateKey("autopilot_interval_seconds"));
+        AUTOPILOT_INTERVAL_SECONDS = builder.defineInRange("AutopilotIntervalSeconds", 5, 1, 3600);
 
         builder.pop();
     }

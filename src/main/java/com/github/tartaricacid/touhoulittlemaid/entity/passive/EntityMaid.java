@@ -1600,6 +1600,14 @@ public class EntityMaid extends TamableAnimal implements CrossbowAttackMob, IMai
             // 女仆被指令杀后也正常生成墓碑
             this.dropEquipment();
         }
+        // 1.5.3.1-autopilot: 女仆被移除时回收她持有的区块加载票。
+        // 区块卸载/换维度只是暂时移除（女仆会以同一 UUID 重新出现），锚点保留；
+        // 击杀/被指令清除则连锚点一起删。
+        if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+            boolean gone = reason == RemovalReason.KILLED || reason == RemovalReason.DISCARDED;
+            com.github.tartaricacid.touhoulittlemaid.ai.autopilot.MaidChunkLoader
+                    .releaseFrom(this.getUUID(), serverLevel.getServer(), gone);
+        }
         super.remove(reason);
     }
 

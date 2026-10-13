@@ -27,6 +27,7 @@ public class AIConfig {
 
     public static ModConfigSpec.BooleanValue AUTOPILOT_ENABLED;
     public static ModConfigSpec.IntValue AUTOPILOT_INTERVAL_SECONDS;
+    public static ModConfigSpec.BooleanValue AUTOPILOT_CHUNK_LOADING;
 
     public static void init(ModConfigSpec.Builder builder) {
         builder.push("ai");
@@ -75,6 +76,9 @@ public class AIConfig {
 
         builder.comment("Seconds between two autopilot decisions for each maid (chained mode)").translation(translateKey("autopilot_interval_seconds"));
         AUTOPILOT_INTERVAL_SECONDS = builder.defineInRange("AutopilotIntervalSeconds", 5, 1, 3600);
+
+        builder.comment("Whether maid's own movement keeps nearby chunks loaded (so she keeps acting far from any player)").translation(translateKey("autopilot_chunk_loading"));
+        AUTOPILOT_CHUNK_LOADING = builder.define("AutopilotChunkLoading", true);
 
         builder.pop();
     }

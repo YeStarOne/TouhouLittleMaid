@@ -17,6 +17,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import java.net.http.HttpRequest;
 
 public class TTSCallback implements ResponseCallback<byte[]> {
+    /** 附近玩家可听见的距离（1.5.3.1-autopilot：让自主女仆在主人不在时也能被听见）。 */
+    private static final double AUDIBLE_RANGE = 32.0;
+
     private final EntityMaid maid;
     private final String chatText;
     private final long waitingChatBubbleId;
@@ -48,13 +51,21 @@ public class TTSCallback implements ResponseCallback<byte[]> {
         if (!(maid.level instanceof ServerLevel serverLevel)) {
             return;
         }
-        LivingEntity owner = maid.getOwner();
-        if (!(owner instanceof ServerPlayer player)) {
-            return;
-        }
         MinecraftServer server = serverLevel.getServer();
         server.submit(() -> {
-            PacketDistributor.sendToPlayer(player, new TTSAudioToClientPackage(maid.getId(), data));
+            // 1.5.3.1-autopilot: 原版只把音频发给主人的实现，会让没有主人在线的自主女仆永远没有声音
+            // （野生女仆的 getOwner() 返回 null，这里直接 return，连聊天气泡都不会挂）。
+            // 改为：主人（无论多远）+ 同维度 32 格内玩家都能听到。
+            TTSAudioToClientPackage packet = new TTSAudioToClientPackage(maid.getId(), data);
+            if (maid.getOwner() instanceof ServerPlayer owner) {
+                PacketDistributor.sendToPlayer(owner, packet);
+            }
+            double rangeSqr = AUDIBLE_RANGE * AUDIBLE_RANGE;
+            for (ServerPlayer player : serverLevel.players()) {
+                if (!player.equals(maid.getOwner()) && player.distanceToSqr(maid) <= rangeSqr) {
+                    PacketDistributor.sendToPlayer(player, packet);
+                }
+            }
             maid.getChatBubbleManager().addLLMChatText(chatText, waitingChatBubbleId);
         });
     }

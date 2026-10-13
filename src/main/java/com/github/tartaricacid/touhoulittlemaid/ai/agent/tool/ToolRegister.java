@@ -25,6 +25,10 @@ public class ToolRegister {
         register.register(new EatFoodTool());
         register.register(new StoreLootTool());
         register.register(new ExecuteCommandTool());
+        register.register(new MoveToTool());
+        register.register(new FindBlocksTool());
+        register.register(new MineBlockTool());
+        register.register(new GetActionStatusTool());
 
         for (ILittleMaid littleMaid : TouhouLittleMaid.EXTENSIONS) {
             littleMaid.registerAITool(register);

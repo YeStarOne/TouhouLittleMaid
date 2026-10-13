@@ -120,14 +120,28 @@ public abstract class MaidAIChatData extends MaidAIChatSerializable {
 
         TTSSite site;
         if (StringUtils.isBlank(ttsSite)) {
-            site = AvailableSites.getTTSSite(TTSSystemSite.API_TYPE);
+            site = pickDefaultTTSSite();
         } else {
             site = AvailableSites.getTTSSite(ttsSite);
             if (site == null || !site.enabled()) {
-                site = AvailableSites.getTTSSite(TTSSystemSite.API_TYPE);
+                site = pickDefaultTTSSite();
             }
         }
         return site;
+    }
+
+    /**
+     * 1.5.3.1-autopilot: 原版在女仆未选站点时直接回退到系统站点（Windows 讲述人英文机械音）。
+     * 改为：优先使用第一个启用的非系统站点（如本地 GPT-SoVITS 桥的甜美中文声线），
+     * 一个都没有时才退回系统站点。
+     */
+    private static TTSSite pickDefaultTTSSite() {
+        for (TTSSite site : AvailableSites.TTS_SITES.values()) {
+            if (site.enabled() && !TTSSystemSite.API_TYPE.equals(site.id())) {
+                return site;
+            }
+        }
+        return AvailableSites.getTTSSite(TTSSystemSite.API_TYPE);
     }
 
     public String getLLMModel() {

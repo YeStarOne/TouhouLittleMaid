@@ -369,8 +369,9 @@ public class LLMCallback implements ResponseCallback<ResponseChat> {
         this.toolTurnCount = this.toolTurnCount + 1;
 
         // 超出，直接中断
-        if (this.toolTurnCount > MAX_TOOL_TURN_COUNT) {
-            String message = "Tool turn count exceed max count: %d".formatted(MAX_TOOL_TURN_COUNT);
+        int maxTurn = this.maxToolTurnCount();
+        if (this.toolTurnCount > maxTurn) {
+            String message = "Tool turn count exceed max count: %d".formatted(maxTurn);
             this.onFailure(null, new Throwable(message), ErrorCode.REQUEST_RECEIVED_ERROR);
             TouhouLittleMaid.LOGGER.error(message);
             return false;
@@ -386,13 +387,37 @@ public class LLMCallback implements ResponseCallback<ResponseChat> {
         }
 
         // 如果连续重复调用同一批工具超过阈值，直接中断，避免无进展的循环调用
-        if (this.repeatedToolBatchCount > MAX_REPEAT_TOOL_BATCH_COUNT) {
+        int maxRepeat = this.maxRepeatedToolBatchCount();
+        if (this.repeatedToolBatchCount > maxRepeat) {
             String message = "Repeated identical tool batch exceed max count: %s".formatted(signature);
             TouhouLittleMaid.LOGGER.error(message);
             this.onFailure(null, new Throwable(message), ErrorCode.REQUEST_RECEIVED_ERROR);
             return false;
         }
         return true;
+    }
+
+    /**
+     * 单次决策内允许的最大工具调用轮次（可覆写）。
+     * <p>
+     * 1.5.3.1-autopilot: 自主模式一轮决策里包含"找矿→移动→挖矿→移动→挖矿…"的长链，
+     * 16 轮会在链中途硬中断，而中断 = 整轮失败（消息全丢 + 吃失败退避），
+     * 于是变成"干活干到一半就被判失败"的死循环。默认值保持原版，
+     * 由 {@link com.github.tartaricacid.touhoulittlemaid.ai.autopilot.AutopilotCallback}
+     * 放宽。
+     */
+    protected int maxToolTurnCount() {
+        return MAX_TOOL_TURN_COUNT;
+    }
+
+    /**
+     * 连续重复同一批工具调用的容忍次数（可覆写）。
+     * <p>
+     * 自主模式下"边走边轮询状态"（get_action_status）属于合理行为，
+     * 需要比普通对话更高的容忍度；同样由 AutopilotCallback 放宽。
+     */
+    protected int maxRepeatedToolBatchCount() {
+        return MAX_REPEAT_TOOL_BATCH_COUNT;
     }
 
     /**

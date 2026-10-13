@@ -272,9 +272,13 @@ public final class MaidAIChatManager extends MaidAIChatData {
         }
         MinecraftServer server = serverLevel.getServer();
         server.submit(() -> {
-            if (maid.getOwner() instanceof ServerPlayer player) {
-                TTSSystemAudioToClientPackage message = new TTSSystemAudioToClientPackage(name, ttsText, config, services);
-                PacketDistributor.sendToPlayer(player, message);
+            // 1.5.3.1-autopilot: 与 TTSCallback 同理，主人不在线时野生女仆也要能被附近玩家听见
+            TTSSystemAudioToClientPackage message = new TTSSystemAudioToClientPackage(name, ttsText, config, services);
+            double rangeSqr = 32.0 * 32.0;
+            for (ServerPlayer player : serverLevel.players()) {
+                if (player.equals(maid.getOwner()) || player.distanceToSqr(maid) <= rangeSqr) {
+                    PacketDistributor.sendToPlayer(player, message);
+                }
             }
             maid.getChatBubbleManager().addLLMChatText(chatText, waitingChatBubbleId);
         });

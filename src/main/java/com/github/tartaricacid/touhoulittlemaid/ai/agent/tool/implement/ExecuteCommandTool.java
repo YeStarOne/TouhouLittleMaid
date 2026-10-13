@@ -39,9 +39,9 @@ public class ExecuteCommandTool implements ITool<String> {
             Run a Minecraft server command as the console (permission level 4), positioned at yourself.
             - Write the command with or without a leading '/'. @s refers to you; ~ ~ ~ is relative to your position.
             - Returns the command output plus relevant server log lines.
-            - You CAN: inspect the world (data get, execute if block), build/place blocks (setblock/fill with real blocks), copy structures (clone), teleport, summon animals, set time.
-            - You CANNOT (blocked by safety guard): remove blocks (fill/setblock with air/water/lava/fire), clone move, kill/damage, WorldEdit commands, gamemode/gamerule/difficulty, forceload, dangerous summons, server admin commands.
-            - Respect survival play: gather resources by mining/walking like a normal player; use commands mainly for building, inspecting, and getting around.""".trim();
+            - You CAN: inspect the world (data get, execute if block), build/place blocks (setblock/fill with real blocks), copy structures (clone), summon animals, set time.
+            - You CANNOT (blocked by safety guard): remove blocks (fill/setblock with air/water/lava/fire), clone move, kill/damage, teleport (walk instead — teleporting caused a maid to suffocate inside a wall), WorldEdit commands, gamemode/gamerule/difficulty, forceload, dangerous summons, server admin commands.
+            - Respect survival play: gather resources by mining/walking like a normal player; move with walk commands, never by teleporting.""".trim();
 
     private static final int MAX_COMMAND_LENGTH = 512;
     private static final int MAX_OUTPUT_CHARS = 2400;
@@ -51,13 +51,18 @@ public class ExecuteCommandTool implements ITool<String> {
 
     /**
      * 根命令黑名单：服务器/管理员生命周期类命令禁止女仆执行
+     * <p>
+     * tp/teleport 是 1013 加入的：酒狐女仆曾用 `execute ... run tp @s ~8 ~ ~` 把自己从墙里
+     * "救"出来，结果卡进实心方块反复传送后窒息/饥饿而死（墓碑 NBT 里留有完整现场）。
+     * 生存原则要求她走路，不允许瞬移。
      */
     private static final List<String> BLOCKED_ROOTS = List.of(
             "stop", "ban", "ban-ip", "pardon", "op", "deop", "kick", "whitelist",
             "reload", "kubejs", "datapack", "save-all", "save-off", "save-on",
             "gamemode", "defaultgamemode", "difficulty", "gamerule",
             "forceload", "kill", "damage", "worldborder",
-            "function", "schedule", "clear", "tick", "jigsaw", "place"
+            "function", "schedule", "clear", "tick", "jigsaw", "place",
+            "tp", "teleport", "spreadplayers"
     );
 
     /**
